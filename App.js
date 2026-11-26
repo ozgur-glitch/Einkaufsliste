@@ -19,8 +19,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 
-const STORAGE_ITEMS_KEY = '@einkaufsliste_items_v1';
-const STORAGE_THEME_KEY = '@einkaufsliste_theme_v1';
+const STORAGE_ITEMS_KEY = '@einkaufsliste_items_v2';
+const STORAGE_THEME_KEY = '@einkaufsliste_theme_v2';
 
 const CATEGORIES = [
   { id: 'obst', label: 'Obst & Gemüse', icon: 'leaf-outline' },
@@ -62,14 +62,13 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [inputText, setInputText] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('obst');
-  const [filter, setFilter] = useState('alle'); // 'alle' | 'offen' | 'erledigt'
+  const [filter, setFilter] = useState('alle');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
   const theme = isDarkMode ? DARK_THEME : LIGHT_THEME;
 
-  // Daten beim Start aus AsyncStorage laden
   useEffect(() => {
     const loadAppData = async () => {
       try {
@@ -91,7 +90,6 @@ export default function App() {
     loadAppData();
   }, []);
 
-  // Einkaufsliste automatisch speichern
   useEffect(() => {
     if (!isLoaded) return;
     const saveItems = async () => {
@@ -104,7 +102,6 @@ export default function App() {
     saveItems();
   }, [items, isLoaded]);
 
-  // Theme-Einstellung speichern
   const toggleTheme = async (value) => {
     setIsDarkMode(value);
     try {
@@ -114,7 +111,6 @@ export default function App() {
     }
   };
 
-  // Artikel hinzufügen
   const addItem = () => {
     const trimmed = inputText.trim();
     if (!trimmed) return;
@@ -132,7 +128,6 @@ export default function App() {
     setInputText('');
   };
 
-  // Status umschalten (abgehakt / offen)
   const toggleComplete = (id) => {
     setItems(
       items.map((item) =>
@@ -141,7 +136,6 @@ export default function App() {
     );
   };
 
-  // Menge anpassen
   const updateQuantity = (id, delta) => {
     setItems(
       items.map((item) => {
@@ -154,19 +148,17 @@ export default function App() {
     );
   };
 
-  // Einzelnen Artikel löschen
   const deleteItem = (id) => {
     setItems(items.filter((item) => item.id !== id));
   };
 
-  // Alle erledigten Artikel löschen
   const clearCompleted = () => {
     const completedCount = items.filter((i) => i.completed).length;
     if (completedCount === 0) return;
 
     Alert.alert(
       'Erledigte entfernen',
-      `Möchtest du alle ${completedCount} abgehakten Artikel aus der Liste löschen?`,
+      `Möchtest du alle ${completedCount} abgehakten Artikel löschen?`,
       [
         { text: 'Abbrechen', style: 'cancel' },
         {
@@ -178,7 +170,6 @@ export default function App() {
     );
   };
 
-  // Komplette Liste zurücksetzen
   const clearAllItems = () => {
     if (items.length === 0) return;
     Alert.alert(
@@ -198,7 +189,6 @@ export default function App() {
     );
   };
 
-  // Gefilterte und sortierte Liste (offene Artikel zuerst)
   const filteredItems = items
     .filter((item) => {
       if (filter === 'offen') return !item.completed;
@@ -290,7 +280,6 @@ export default function App() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
-      {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <View>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Einkaufsliste</Text>
@@ -311,14 +300,12 @@ export default function App() {
           <TouchableOpacity
             onPress={() => setSettingsVisible(true)}
             style={[styles.iconButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-            accessibilityLabel="Einstellungen öffnen"
           >
             <Ionicons name="settings-outline" size={22} color={theme.text} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Fortschrittsbalken */}
       <View style={[styles.progressBarBg, { backgroundColor: theme.border }]}>
         <View
           style={[
@@ -328,7 +315,6 @@ export default function App() {
         />
       </View>
 
-      {/* Eingabebereich */}
       <View style={[styles.inputSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <View style={styles.inputRow}>
           <TextInput
@@ -356,7 +342,6 @@ export default function App() {
           </TouchableOpacity>
         </View>
 
-        {/* Kategorie-Auswahl */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -395,7 +380,6 @@ export default function App() {
         </ScrollView>
       </View>
 
-      {/* Filter-Leiste */}
       <View style={styles.filterRow}>
         {[
           { key: 'alle', label: `Alle (${totalCount})` },
@@ -428,7 +412,6 @@ export default function App() {
         })}
       </View>
 
-      {/* Artikelliste */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
@@ -445,14 +428,13 @@ export default function App() {
                 Keine Artikel vorhanden
               </Text>
               <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-                Füge oben neue Produkte hinzu. Alle Einträge werden automatisch lokal gespeichert.
+                Füge oben neue Produkte hinzu.
               </Text>
             </View>
           }
         />
       </KeyboardAvoidingView>
 
-      {/* Einstellungs-Modal */}
       <Modal
         visible={settingsVisible}
         animationType="slide"
@@ -471,7 +453,6 @@ export default function App() {
             </View>
 
             <ScrollView contentContainerStyle={styles.modalContent}>
-              {/* Darstellung */}
               <Text style={[styles.sectionHeader, { color: theme.primary }]}>
                 DARSTELLUNG
               </Text>
@@ -487,7 +468,7 @@ export default function App() {
                       Dunkelmodus (Dark Mode)
                     </Text>
                     <Text style={[styles.settingDesc, { color: theme.textSecondary }]}>
-                      {isDarkMode ? 'Aktiviert' : 'Deaktiviert (Hellmodus aktiv)'}
+                      {isDarkMode ? 'Aktiviert' : 'Deaktiviert'}
                     </Text>
                   </View>
                 </View>
@@ -499,7 +480,6 @@ export default function App() {
                 />
               </View>
 
-              {/* Datenverwaltung */}
               <Text style={[styles.sectionHeader, { color: theme.primary }]}>
                 DATENVERWALTUNG
               </Text>
@@ -513,7 +493,6 @@ export default function App() {
                 </Text>
               </TouchableOpacity>
 
-              {/* Benutzerhandbuch */}
               <Text style={[styles.sectionHeader, { color: theme.primary }]}>
                 BENUTZERHANDBUCH
               </Text>
@@ -522,25 +501,17 @@ export default function App() {
                   1. Artikel hinzufügen
                 </Text>
                 <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Tippe den Produktnamen in das Textfeld ein, wähle optional eine Kategorie (z. B. Obst & Gemüse) und drücke auf das Plus-Symbol.
+                  Tippe den Namen ein, wähle eine Kategorie und tippe auf das Plus.
                 </Text>
 
                 <Text style={[styles.guideTitle, { color: theme.text, marginTop: 10 }]}>
-                  2. Menge ändern & Abhaken
+                  2. Mengen & Erledigt
                 </Text>
                 <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Nutze „+“ und „-“ rechts am Artikel für die Stückzahl. Tippe auf den Artikel oder die Checkbox, um ihn als erledigt zu markieren.
-                </Text>
-
-                <Text style={[styles.guideTitle, { color: theme.text, marginTop: 10 }]}>
-                  3. Automatische Speicherung
-                </Text>
-                <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Deine Einkaufsliste und dein Farbschema bleiben beim Schließen der App vollständig auf deinem Gerät erhalten.
+                  Passe die Stückzahl mit +/- an oder klicke auf die Checkbox.
                 </Text>
               </View>
 
-              {/* Entwicklerinformationen */}
               <Text style={[styles.sectionHeader, { color: theme.primary }]}>
                 ENTWICKLERINFORMATIONEN
               </Text>
@@ -563,7 +534,7 @@ export default function App() {
                 <View style={styles.devRow}>
                   <Ionicons name="information-circle-outline" size={20} color={theme.textSecondary} />
                   <Text style={[styles.devText, { color: theme.textSecondary }]}>
-                    Version 1.0.0 • Expo SDK 51
+                    Version 1.0.0 • Expo SDK 54
                   </Text>
                 </View>
               </View>
