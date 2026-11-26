@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Einkaufsliste",
+    "slug": "einkaufsliste",
+    "owner": "oc2003",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#10B981"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.oc2003.einkaufsliste"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./icon.png",
+        "backgroundColor": "#10B981"
+      },
+      "package": "com.oc2003.einkaufsliste"
+    },
+    "web": {
+      "favicon": "./favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "67b1c457-3576-4124-9a5d-da505043565f"
+      }
+    }
+  }
+}
