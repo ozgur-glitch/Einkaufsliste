@@ -9,11 +9,17 @@
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EAS_BUILD_NODE_VERSION": "22"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
+      "env": {
+        "EAS_BUILD_NODE_VERSION": "22"
+      },
       "android": {
         "buildType": "app-bundle"
       }
