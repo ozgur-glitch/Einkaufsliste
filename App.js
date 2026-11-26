@@ -14,14 +14,16 @@ import {
   Alert,
   KeyboardAvoidingView,
   Linking,
-  StatusBar
+  StatusBar,
+  Share
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 
-const STORAGE_ITEMS_KEY = '@einkaufsliste_items_v9';
-const STORAGE_HISTORY_KEY = '@einkaufsliste_history_v3';
-const STORAGE_THEME_KEY = '@einkaufsliste_theme_v9';
+const STORAGE_ITEMS_KEY = '@einkaufsliste_items_v10';
+const STORAGE_HISTORY_KEY = '@einkaufsliste_history_v4';
+const STORAGE_THEME_KEY = '@einkaufsliste_theme_v10';
 
 const LIGHT_THEME = {
   mode: 'light',
@@ -68,6 +70,14 @@ export default function App() {
   const noteInputRef = useRef(null);
 
   const theme = isDarkMode ? DARK_THEME : LIGHT_THEME;
+
+  const triggerHaptic = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e) {
+      // Fallback für Plattformen ohne Haptics
+    }
+  };
 
   React.useEffect(() => {
     const loadAppData = async () => {
@@ -123,6 +133,7 @@ export default function App() {
 
   const toggleTheme = async (value) => {
     setIsDarkMode(value);
+    triggerHaptic();
     try {
       await AsyncStorage.setItem(STORAGE_THEME_KEY, JSON.stringify(value));
     } catch (error) {
@@ -134,6 +145,7 @@ export default function App() {
     const text = (nameToAdd || inputText).trim();
     if (!text) return;
 
+    triggerHaptic();
     const trimmedNote = noteText.trim();
 
     const existingIndex = items.findIndex(
@@ -180,6 +192,7 @@ export default function App() {
   };
 
   const toggleComplete = (id) => {
+    triggerHaptic();
     setItems(
       items.map((item) =>
         item.id === id ? { ...item, completed: !item.completed } : item
@@ -188,6 +201,7 @@ export default function App() {
   };
 
   const updateQuantity = (id, delta) => {
+    triggerHaptic();
     setItems(
       items.map((item) => {
         if (item.id === id) {
@@ -209,6 +223,7 @@ export default function App() {
       return;
     }
 
+    triggerHaptic();
     const asNum = Number(trimmed);
     const finalQty = !isNaN(asNum) && trimmed !== '' ? asNum : trimmed;
 
@@ -226,6 +241,7 @@ export default function App() {
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= items.length) return;
 
+    triggerHaptic();
     const updated = [...items];
     const movedItem = updated.splice(index, 1)[0];
     updated.splice(newIndex, 0, movedItem);
@@ -241,7 +257,10 @@ export default function App() {
         {
           text: 'Löschen',
           style: 'destructive',
-          onPress: () => setItems(items.filter((item) => item.id !== id)),
+          onPress: () => {
+            triggerHaptic();
+            setItems(items.filter((item) => item.id !== id));
+          },
         },
       ]
     );
@@ -259,7 +278,10 @@ export default function App() {
         {
           text: 'Löschen',
           style: 'destructive',
-          onPress: () => setItems(items.filter((item) => !item.completed)),
+          onPress: () => {
+            triggerHaptic();
+            setItems(items.filter((item) => !item.completed));
+          },
         },
       ]
     );
@@ -276,12 +298,35 @@ export default function App() {
           text: 'Alles löschen',
           style: 'destructive',
           onPress: () => {
+            triggerHaptic();
             setItems([]);
             setSettingsVisible(false);
           },
         },
       ]
     );
+  };
+
+  const shareList = async () => {
+    const openItems = items.filter(i => !i.completed);
+    if (openItems.length === 0) {
+      Alert.alert('Hinweis', 'Deine offene Einkaufsliste ist leer!');
+      return;
+    }
+
+    triggerHaptic();
+    let textToShare = '🛒 Meine Einkaufsliste:\n\n';
+    openItems.forEach(i => {
+      textToShare += `• ${i.name} (${i.quantity})${i.note ? ` - ${i.note}` : ''}\n`;
+    });
+
+    try {
+      await Share.share({
+        message: textToShare,
+      });
+    } catch (error) {
+      console.error('Fehler beim Teilen:', error);
+    }
   };
 
   const matchingSuggestions = inputText.trim().length > 0
@@ -416,6 +461,13 @@ export default function App() {
         </View>
 
         <View style={styles.headerButtons}>
+          <TouchableOpacity
+            onPress={shareList}
+            style={[styles.iconButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+          >
+            <Ionicons name="share-social-outline" size={20} color={theme.primary} />
+          </TouchableOpacity>
+
           {completedCount > 0 && (
             <TouchableOpacity
               onPress={clearCompleted}
@@ -424,6 +476,7 @@ export default function App() {
               <Ionicons name="checkmark-done-outline" size={22} color={theme.primary} />
             </TouchableOpacity>
           )}
+
           <TouchableOpacity
             onPress={() => setSettingsVisible(true)}
             style={[styles.iconButton, { backgroundColor: theme.card, borderColor: theme.border }]}
@@ -675,28 +728,21 @@ export default function App() {
                   1. Intelligente Eingabe & Verlauf
                 </Text>
                 <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Tippe den Artikel ein und drücke Enter (springt zum Notizfeld). Ein Klick auf Autovervollständigungs-Vorschläge füllt das Produkt ebenfalls ein. Erst nach dem Enter im Notizfeld (oder Klick auf das Plus) wird der Artikel gespeichert.
+                  Tippe den Artikel ein und drücke Enter (springt zum Notizfeld). Ein Klick auf Autovervollständigungs-Vorschläge füllt das Produkt ein und springt direkt zur Notiz. Erst nach dem Enter im Notizfeld (oder Klick auf das Plus) wird der Artikel gespeichert.
                 </Text>
 
                 <Text style={[styles.guideTitle, { color: theme.text, marginTop: 10 }]}>
-                  2. Duplikat-Schutz & Notizen
+                  2. Teilen-Funktion
                 </Text>
                 <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Existiert ein Artikel bereits auf der Liste, erhöht sich beim erneuten Hinzufügen automatisch die Menge. Über das Notizfeld kannst du optionale Marken oder Mengeninfos (z.B. „1,5% Fett“) hinterlegen.
+                  Über das Teilen-Icon im Header kannst du deine offene Einkaufsliste direkt als formatierten Text an WhatsApp, SMS oder Notizen senden.
                 </Text>
 
                 <Text style={[styles.guideTitle, { color: theme.text, marginTop: 10 }]}>
-                  3. Mengensteuerung & Schnell-Zähler
+                  3. Haptisches Feedback & Steuerung
                 </Text>
                 <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Nutze die „+“ und „-“ Buttons für die Stückzahl oder tippe direkt auf die Mengenzahl, um ein Ziffernblock-Fenster für beliebige Mengen (z.B. „500g“) zu öffnen.
-                </Text>
-
-                <Text style={[styles.guideTitle, { color: theme.text, marginTop: 10 }]}>
-                  4. Route anpassen & Abhaken
-                </Text>
-                <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Verschiebe Artikel mit den Pfeiltasten (▲/▼) perfekt passend zu deiner Supermarkt-Route. Das Abhaken erfolgt sicher ausschließlich über das Checkbox-Viereck links.
+                  Die App vibriert leicht bei Interaktionen. Nutze die Pfeiltasten (▲/▼) für deine Supermarkt-Route, die Checkbox zum Abhaken und tippe direkt auf Mengen, um diese anzupassen.
                 </Text>
               </View>
 
@@ -722,7 +768,7 @@ export default function App() {
                 <View style={styles.devRow}>
                   <Ionicons name="information-circle-outline" size={20} color={theme.textSecondary} />
                   <Text style={[styles.devText, { color: theme.textSecondary }]}>
-                    Version 1.1.2 • Expo SDK 54
+                    Version 1.1.3 • Expo SDK 54
                   </Text>
                 </View>
               </View>
