@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -19,16 +19,9 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 
-const STORAGE_ITEMS_KEY = '@einkaufsliste_items_v2';
-const STORAGE_THEME_KEY = '@einkaufsliste_theme_v2';
-
-const CATEGORIES = [
-  { id: 'obst', label: 'Obst & Gemüse', icon: 'leaf-outline' },
-  { id: 'kuehlung', label: 'Kühlregal', icon: 'snow-outline' },
-  { id: 'backwaren', label: 'Backwaren', icon: 'cafe-outline' },
-  { id: 'vorrat', label: 'Vorrat & Getränke', icon: 'basket-outline' },
-  { id: 'haushalt', label: 'Drogerie & Haushalt', icon: 'sparkles-outline' },
-];
+const STORAGE_ITEMS_KEY = '@einkaufsliste_items_v9';
+const STORAGE_HISTORY_KEY = '@einkaufsliste_history_v3';
+const STORAGE_THEME_KEY = '@einkaufsliste_theme_v9';
 
 const LIGHT_THEME = {
   mode: 'light',
@@ -60,23 +53,37 @@ const DARK_THEME = {
 
 export default function App() {
   const [items, setItems] = useState([]);
+  const [history, setHistory] = useState([]);
   const [inputText, setInputText] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('obst');
-  const [filter, setFilter] = useState('alle');
+  const [noteText, setNoteText] = useState('');
+  const [filter, setFilter] = useState('offen');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  const [qtyModalVisible, setQtyModalVisible] = useState(false);
+  const [activeItemId, setActiveItemId] = useState(null);
+  const [customQtyText, setCustomQtyText] = useState('');
+
+  const noteInputRef = useRef(null);
+
   const theme = isDarkMode ? DARK_THEME : LIGHT_THEME;
 
-  useEffect(() => {
+  React.useEffect(() => {
     const loadAppData = async () => {
       try {
         const savedItems = await AsyncStorage.getItem(STORAGE_ITEMS_KEY);
+        const savedHistory = await AsyncStorage.getItem(STORAGE_HISTORY_KEY);
         const savedTheme = await AsyncStorage.getItem(STORAGE_THEME_KEY);
 
         if (savedItems !== null) {
           setItems(JSON.parse(savedItems));
+        }
+        if (savedHistory !== null) {
+          setHistory(JSON.parse(savedHistory));
+        } else if (savedItems !== null) {
+          const initialHistory = Array.from(new Set(JSON.parse(savedItems).map(i => i.name)));
+          setHistory(initialHistory);
         }
         if (savedTheme !== null) {
           setIsDarkMode(JSON.parse(savedTheme));
@@ -90,7 +97,7 @@ export default function App() {
     loadAppData();
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!isLoaded) return;
     const saveItems = async () => {
       try {
@@ -102,6 +109,18 @@ export default function App() {
     saveItems();
   }, [items, isLoaded]);
 
+  React.useEffect(() => {
+    if (!isLoaded) return;
+    const saveHistory = async () => {
+      try {
+        await AsyncStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(history));
+      } catch (error) {
+        console.error('Fehler beim Speichern des Verlaufs:', error);
+      }
+    };
+    saveHistory();
+  }, [history, isLoaded]);
+
   const toggleTheme = async (value) => {
     setIsDarkMode(value);
     try {
@@ -111,21 +130,53 @@ export default function App() {
     }
   };
 
-  const addItem = () => {
-    const trimmed = inputText.trim();
-    if (!trimmed) return;
+  const addItem = (nameToAdd) => {
+    const text = (nameToAdd || inputText).trim();
+    if (!text) return;
 
-    const newItem = {
-      id: Date.now().toString(),
-      name: trimmed,
-      quantity: 1,
-      category: selectedCategory,
-      completed: false,
-      createdAt: new Date().toISOString(),
-    };
+    const trimmedNote = noteText.trim();
 
-    setItems([newItem, ...items]);
+    const existingIndex = items.findIndex(
+      (item) => item.name.toLowerCase() === text.toLowerCase() && !item.completed
+    );
+
+    if (existingIndex !== -1) {
+      const updated = [...items];
+      const currentItem = updated[existingIndex];
+      
+      let newQty = 1;
+      if (typeof currentItem.quantity === 'number') {
+        newQty = currentItem.quantity + 1;
+      } else {
+        const parsed = parseInt(currentItem.quantity, 10);
+        newQty = !isNaN(parsed) ? parsed + 1 : 2;
+      }
+
+      updated[existingIndex] = {
+        ...currentItem,
+        quantity: newQty,
+        note: trimmedNote ? trimmedNote : currentItem.note,
+      };
+
+      setItems(updated);
+    } else {
+      const newItem = {
+        id: Date.now().toString() + Math.random().toString(),
+        name: text,
+        quantity: 1,
+        note: trimmedNote,
+        completed: false,
+        createdAt: new Date().toISOString(),
+      };
+      setItems([newItem, ...items]);
+    }
+
+    if (!history.some(h => h.toLowerCase() === text.toLowerCase())) {
+      setHistory(prev => [text, ...prev]);
+    }
+
     setInputText('');
+    setNoteText('');
   };
 
   const toggleComplete = (id) => {
@@ -140,16 +191,60 @@ export default function App() {
     setItems(
       items.map((item) => {
         if (item.id === id) {
-          const newQty = Math.max(1, item.quantity + delta);
-          return { ...item, quantity: newQty };
+          if (typeof item.quantity === 'number') {
+            const newQty = Math.max(1, item.quantity + delta);
+            return { ...item, quantity: newQty };
+          }
         }
         return item;
       })
     );
   };
 
-  const deleteItem = (id) => {
-    setItems(items.filter((item) => item.id !== id));
+  const saveCustomQuantity = () => {
+    if (!activeItemId) return;
+    const trimmed = customQtyText.trim();
+    if (!trimmed) {
+      setQtyModalVisible(false);
+      return;
+    }
+
+    const asNum = Number(trimmed);
+    const finalQty = !isNaN(asNum) && trimmed !== '' ? asNum : trimmed;
+
+    setItems(
+      items.map((item) =>
+        item.id === activeItemId ? { ...item, quantity: finalQty } : item
+      )
+    );
+    setQtyModalVisible(false);
+    setActiveItemId(null);
+    setCustomQtyText('');
+  };
+
+  const moveItem = (index, direction) => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= items.length) return;
+
+    const updated = [...items];
+    const movedItem = updated.splice(index, 1)[0];
+    updated.splice(newIndex, 0, movedItem);
+    setItems(updated);
+  };
+
+  const confirmAndDeleteItem = (id, itemName) => {
+    Alert.alert(
+      'Artikel löschen',
+      `Möchtest du "${itemName}" wirklich von der Liste löschen?`,
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        {
+          text: 'Löschen',
+          style: 'destructive',
+          onPress: () => setItems(items.filter((item) => item.id !== id)),
+        },
+      ]
+    );
   };
 
   const clearCompleted = () => {
@@ -189,23 +284,24 @@ export default function App() {
     );
   };
 
-  const filteredItems = items
-    .filter((item) => {
-      if (filter === 'offen') return !item.completed;
-      if (filter === 'erledigt') return item.completed;
-      return true;
-    })
-    .sort((a, b) => Number(a.completed) - Number(b.completed));
+  const matchingSuggestions = inputText.trim().length > 0
+    ? history
+        .filter((name) => name.toLowerCase().includes(inputText.trim().toLowerCase()) && name.toLowerCase() !== inputText.trim().toLowerCase())
+        .slice(0, 4)
+    : [];
+
+  const filteredItems = items.filter((item) => {
+    if (filter === 'offen') return !item.completed;
+    if (filter === 'erledigt') return item.completed;
+    return true;
+  });
 
   const totalCount = items.length;
   const completedCount = items.filter((i) => i.completed).length;
+  const openCount = totalCount - completedCount;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-  const getCategoryObj = (catId) =>
-    CATEGORIES.find((c) => c.id === catId) || CATEGORIES[0];
-
-  const renderItem = ({ item }) => {
-    const cat = getCategoryObj(item.category);
+  const renderItem = ({ item, index }) => {
     return (
       <View
         style={[
@@ -217,36 +313,53 @@ export default function App() {
           },
         ]}
       >
+        <View style={styles.reorderColumn}>
+          <TouchableOpacity
+            onPress={() => moveItem(index, 'up')}
+            disabled={index === 0}
+            style={[styles.reorderBtn, index === 0 && { opacity: 0.3 }]}
+          >
+            <Ionicons name="chevron-up" size={14} color={theme.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => moveItem(index, 'down')}
+            disabled={index === items.length - 1}
+            style={[styles.reorderBtn, index === items.length - 1 && { opacity: 0.3 }]}
+          >
+            <Ionicons name="chevron-down" size={14} color={theme.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity
-          style={styles.checkboxArea}
+          style={styles.checkboxTouch}
           onPress={() => toggleComplete(item.id)}
           activeOpacity={0.7}
         >
           <Ionicons
             name={item.completed ? 'checkbox' : 'square-outline'}
-            size={26}
+            size={24}
             color={item.completed ? theme.primary : theme.textSecondary}
           />
-          <View style={styles.itemTextContainer}>
-            <Text
-              style={[
-                styles.itemName,
-                {
-                  color: theme.text,
-                  textDecorationLine: item.completed ? 'line-through' : 'none',
-                },
-              ]}
-            >
-              {item.name}
-            </Text>
-            <View style={styles.categoryBadge}>
-              <Ionicons name={cat.icon} size={12} color={theme.primary} />
-              <Text style={[styles.categoryBadgeText, { color: theme.textSecondary }]}>
-                {cat.label}
-              </Text>
-            </View>
-          </View>
         </TouchableOpacity>
+
+        <View style={styles.itemTextContainer}>
+          <Text
+            style={[
+              styles.itemName,
+              {
+                color: theme.text,
+                textDecorationLine: item.completed ? 'line-through' : 'none',
+              },
+            ]}
+          >
+            {item.name}
+          </Text>
+          {item.note ? (
+            <Text style={[styles.itemNote, { color: theme.textSecondary }]}>
+              {item.note}
+            </Text>
+          ) : null}
+        </View>
 
         <View style={styles.actionsRight}>
           <View style={[styles.qtyBox, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
@@ -256,7 +369,18 @@ export default function App() {
             >
               <Ionicons name="remove" size={16} color={theme.text} />
             </TouchableOpacity>
-            <Text style={[styles.qtyText, { color: theme.text }]}>{item.quantity}</Text>
+
+            <TouchableOpacity
+              onPress={() => {
+                setActiveItemId(item.id);
+                setCustomQtyText(String(item.quantity));
+                setQtyModalVisible(true);
+              }}
+              style={styles.qtyTextTouch}
+            >
+              <Text style={[styles.qtyText, { color: theme.text }]}>{item.quantity}</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               onPress={() => updateQuantity(item.id, 1)}
               style={styles.qtyBtn}
@@ -266,7 +390,7 @@ export default function App() {
           </View>
 
           <TouchableOpacity
-            onPress={() => deleteItem(item.id)}
+            onPress={() => confirmAndDeleteItem(item.id, item.name)}
             style={styles.deleteBtn}
           >
             <Ionicons name="trash-outline" size={20} color={theme.danger} />
@@ -333,60 +457,68 @@ export default function App() {
             placeholderTextColor={theme.textSecondary}
             value={inputText}
             onChangeText={setInputText}
-            onSubmitEditing={addItem}
-            returnKeyType="done"
+            onSubmitEditing={() => {
+              if (noteInputRef.current) {
+                noteInputRef.current.focus();
+              }
+            }}
+            returnKeyType="next"
           />
           <TouchableOpacity
             style={[styles.addButton, { backgroundColor: theme.primary }]}
-            onPress={addItem}
+            onPress={() => addItem()}
             activeOpacity={0.8}
           >
             <Ionicons name="add" size={26} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryScroll}
-        >
-          {CATEGORIES.map((cat) => {
-            const active = selectedCategory === cat.id;
-            return (
+        <TextInput
+          ref={noteInputRef}
+          style={[
+            styles.noteInput,
+            {
+              backgroundColor: theme.inputBg,
+              color: theme.text,
+              borderColor: theme.border,
+            },
+          ]}
+          placeholder="Notiz oder Marke (optional, z.B. 1,5% Fett)"
+          placeholderTextColor={theme.textSecondary}
+          value={noteText}
+          onChangeText={setNoteText}
+          onSubmitEditing={() => addItem()}
+          returnKeyType="done"
+        />
+
+        {matchingSuggestions.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.suggestionScroll}
+          >
+            {matchingSuggestions.map((sug, idx) => (
               <TouchableOpacity
-                key={cat.id}
-                onPress={() => setSelectedCategory(cat.id)}
-                style={[
-                  styles.categoryChip,
-                  {
-                    backgroundColor: active ? theme.primaryLight : theme.inputBg,
-                    borderColor: active ? theme.primary : theme.border,
-                  },
-                ]}
+                key={idx}
+                onPress={() => {
+                  setInputText(sug);
+                  if (noteInputRef.current) {
+                    noteInputRef.current.focus();
+                  }
+                }}
+                style={[styles.suggestionChip, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
               >
-                <Ionicons
-                  name={cat.icon}
-                  size={15}
-                  color={active ? theme.primary : theme.textSecondary}
-                />
-                <Text
-                  style={[
-                    styles.categoryChipText,
-                    { color: active ? theme.primary : theme.textSecondary },
-                  ]}
-                >
-                  {cat.label}
-                </Text>
+                <Ionicons name="search-outline" size={13} color={theme.primary} />
+                <Text style={[styles.suggestionText, { color: theme.text }]}>{sug}</Text>
               </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       <View style={styles.filterRow}>
         {[
-          { key: 'alle', label: `Alle (${totalCount})` },
-          { key: 'offen', label: `Offen (${totalCount - completedCount})` },
+          { key: 'offen', label: `Offen (${openCount})` },
           { key: 'erledigt', label: `Erledigt (${completedCount})` },
         ].map((tab) => {
           const isActive = filter === tab.key;
@@ -431,12 +563,51 @@ export default function App() {
                 Keine Artikel vorhanden
               </Text>
               <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-                Füge oben neue Produkte hinzu.
+                Füge oben neue Produkte hinzu. Bereits verwendete Begriffe stehen dir im Verlauf zur Verfügung.
               </Text>
             </View>
           }
         />
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={qtyModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setQtyModalVisible(false)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay, justifyContent: 'center' }]}>
+          <View style={[styles.qtyModalContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Text style={[styles.modalTitle, { color: theme.text, marginBottom: 12 }]}>
+              Menge direkt eingeben
+            </Text>
+            <TextInput
+              style={styles.modalTextInputForced}
+              placeholder="z.B. 5 oder 500g"
+              placeholderTextColor="#9CA3AF"
+              value={customQtyText}
+              onChangeText={setCustomQtyText}
+              autoFocus={true}
+              keyboardType="default"
+              onSubmitEditing={saveCustomQuantity}
+            />
+            <View style={styles.qtyModalButtons}>
+              <TouchableOpacity
+                style={[styles.qtyModalBtn, { borderColor: theme.border, backgroundColor: theme.inputBg }]}
+                onPress={() => setQtyModalVisible(false)}
+              >
+                <Text style={{ color: theme.textSecondary, fontWeight: '600' }}>Abbrechen</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.qtyModalBtn, { backgroundColor: theme.primary }]}
+                onPress={saveCustomQuantity}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Speichern</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={settingsVisible}
@@ -501,17 +672,31 @@ export default function App() {
               </Text>
               <View style={[styles.infoBox, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
                 <Text style={[styles.guideTitle, { color: theme.text }]}>
-                  1. Artikel hinzufügen
+                  1. Intelligente Eingabe & Verlauf
                 </Text>
                 <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Tippe den Namen ein, wähle eine Kategorie und tippe auf das Plus.
+                  Tippe den Artikel ein und drücke Enter (springt zum Notizfeld). Ein Klick auf Autovervollständigungs-Vorschläge füllt das Produkt ebenfalls ein. Erst nach dem Enter im Notizfeld (oder Klick auf das Plus) wird der Artikel gespeichert.
                 </Text>
 
                 <Text style={[styles.guideTitle, { color: theme.text, marginTop: 10 }]}>
-                  2. Mengen & Erledigt
+                  2. Duplikat-Schutz & Notizen
                 </Text>
                 <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Passe die Stückzahl mit +/- an oder klicke auf die Checkbox.
+                  Existiert ein Artikel bereits auf der Liste, erhöht sich beim erneuten Hinzufügen automatisch die Menge. Über das Notizfeld kannst du optionale Marken oder Mengeninfos (z.B. „1,5% Fett“) hinterlegen.
+                </Text>
+
+                <Text style={[styles.guideTitle, { color: theme.text, marginTop: 10 }]}>
+                  3. Mengensteuerung & Schnell-Zähler
+                </Text>
+                <Text style={[styles.guideText, { color: theme.textSecondary }]}>
+                  Nutze die „+“ und „-“ Buttons für die Stückzahl oder tippe direkt auf die Mengenzahl, um ein Ziffernblock-Fenster für beliebige Mengen (z.B. „500g“) zu öffnen.
+                </Text>
+
+                <Text style={[styles.guideTitle, { color: theme.text, marginTop: 10 }]}>
+                  4. Route anpassen & Abhaken
+                </Text>
+                <Text style={[styles.guideText, { color: theme.textSecondary }]}>
+                  Verschiebe Artikel mit den Pfeiltasten (▲/▼) perfekt passend zu deiner Supermarkt-Route. Das Abhaken erfolgt sicher ausschließlich über das Checkbox-Viereck links.
                 </Text>
               </View>
 
@@ -537,7 +722,7 @@ export default function App() {
                 <View style={styles.devRow}>
                   <Ionicons name="information-circle-outline" size={20} color={theme.textSecondary} />
                   <Text style={[styles.devText, { color: theme.textSecondary }]}>
-                    Version 1.0.0 • Expo SDK 54
+                    Version 1.1.2 • Expo SDK 54
                   </Text>
                 </View>
               </View>
@@ -615,6 +800,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     fontSize: 16,
   },
+  modalTextInputForced: {
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
+    color: '#111827',
+    paddingHorizontal: 14,
+    fontSize: 18,
+    marginBottom: 16,
+  },
+  noteInput: {
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    marginTop: 10,
+  },
   addButton: {
     width: 48,
     height: 48,
@@ -622,11 +826,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  categoryScroll: {
-    paddingTop: 12,
+  suggestionScroll: {
+    paddingTop: 10,
     gap: 8,
   },
-  categoryChip: {
+  suggestionChip: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
@@ -635,7 +839,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 5,
   },
-  categoryChipText: {
+  suggestionText: {
     fontSize: 12,
     fontWeight: '600',
   },
@@ -664,33 +868,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 12,
+    padding: 10,
     borderRadius: 14,
     borderWidth: 1,
     marginBottom: 10,
   },
-  checkboxArea: {
-    flex: 1,
-    flexDirection: 'row',
+  reorderColumn: {
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingRight: 8,
+    marginRight: 6,
+  },
+  reorderBtn: {
+    padding: 2,
+  },
+  checkboxTouch: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   itemTextContainer: {
-    marginLeft: 12,
+    marginLeft: 10,
     flex: 1,
   },
   itemName: {
     fontSize: 16,
     fontWeight: '600',
   },
-  categoryBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 4,
-  },
-  categoryBadgeText: {
+  itemNote: {
     fontSize: 12,
+    marginTop: 2,
   },
   actionsRight: {
     flexDirection: 'row',
@@ -708,6 +914,11 @@ const styles = StyleSheet.create({
   qtyBtn: {
     paddingHorizontal: 6,
     paddingVertical: 4,
+  },
+  qtyTextTouch: {
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   qtyText: {
     fontSize: 14,
@@ -738,6 +949,24 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
+  },
+  qtyModalContainer: {
+    marginHorizontal: 24,
+    padding: 20,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  qtyModalButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  qtyModalBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContainer: {
     borderTopLeftRadius: 24,
