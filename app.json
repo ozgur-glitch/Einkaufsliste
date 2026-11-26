@@ -3,7 +3,7 @@
     "name": "Einkaufsliste",
     "slug": "einkaufsliste",
     "owner": "oc2003",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./icon.png",
     "userInterfaceStyle": "automatic",
