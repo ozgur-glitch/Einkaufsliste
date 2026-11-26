@@ -13,10 +13,10 @@ import {
   Platform,
   Alert,
   KeyboardAvoidingView,
-  Linking
+  Linking,
+  StatusBar
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 
 const STORAGE_ITEMS_KEY = '@einkaufsliste_items_v2';
@@ -278,7 +278,10 @@ export default function App() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
-      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+      <StatusBar
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        backgroundColor={theme.bg}
+      />
 
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <View>
