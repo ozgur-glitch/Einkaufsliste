@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import {
   StyleSheet,
@@ -1002,8 +1001,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    height: '75%',
-    marginTop: 'auto',
+    maxHeight: '85%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1018,7 +1016,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     padding: 18,
-    paddingBottom: 80,
+    paddingBottom: 120,
   },
   sectionHeader: {
     fontSize: 12,
