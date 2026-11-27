@@ -709,28 +709,28 @@ export default function App() {
                   1. Intelligente Eingabe & Verlauf
                 </Text>
                 <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Tippe den Artikel ein und drücke Enter (springt zum Notizfeld). Ein Klick auf Autovervollständigungs-Vorschläge füllt das Produkt ein und springt direkt zur Notiz. Erst nach dem Enter im Notizfeld (oder Klick auf das Plus) wird der Artikel gespeichert.
+                  Tippe einen Artikel ein und drücke Enter (springt zum Notizfeld) oder klicke auf einen Suchvorschlag. Mit Enter im Notizfeld oder Klick auf „+“ wird der Artikel gespeichert. Bereits offene Artikel werden automatisch hochgezählt.
                 </Text>
 
                 <Text style={[styles.guideTitle, { color: theme.text, marginTop: 10 }]}>
-                  2. Teilen-Funktion
+                  2. Mengen, Sortierung & Abhaken
                 </Text>
                 <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Über das Teilen-Icon im Header kannst du deine offene Einkaufsliste direkt als formatierten Text an WhatsApp, SMS oder Notizen senden.
+                  Nutze „+“ / „–“ oder tippe direkt auf die Zahl, um eigene Mengen (z. B. 500g) einzugeben. Mit den Pfeilen (▲/▼) sortierst du deine Supermarkt-Route. Ein Klick auf das Häkchen-Symbol oben rechts entfernt alle erledigten Artikel.
                 </Text>
 
                 <Text style={[styles.guideTitle, { color: theme.text, marginTop: 10 }]}>
-                  3. Steuerung
+                  3. Teilen & Automatisches Speichern
                 </Text>
                 <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Nutze die Pfeiltasten (▲/▼) für deine Supermarkt-Route, die Checkbox zum Abhaken und tippe direkt auf Mengen, um diese anzupassen.
+                  Über das Teilen-Symbol oben rechts sendest du deine offene Liste direkt per WhatsApp, SMS oder E-Mail. Alle Einträge, der Verlauf und dein Design werden dauerhaft lokal gespeichert.
                 </Text>
               </View>
 
               <Text style={[styles.sectionHeader, { color: theme.primary }]}>
                 ENTWICKLERINFORMATIONEN
               </Text>
-              <View style={[styles.infoBox, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
+              <View style={[styles.infoBox, { backgroundColor: theme.inputBg, borderColor: theme.border, marginBottom: 40 }]}>
                 <View style={styles.devRow}>
                   <Ionicons name="person-circle-outline" size={20} color={theme.primary} />
                   <Text style={[styles.devText, { color: theme.text }]}>
@@ -999,7 +999,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '88%',
-    paddingBottom: 24,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1014,6 +1013,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     padding: 18,
+    paddingBottom: 60,
   },
   sectionHeader: {
     fontSize: 12,
