@@ -1,6 +1,6 @@
-{
+ä{
   "name": "einkaufsliste",
-  "version": "1.0.8",
+  "version": "1.0.0",
   "main": "expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
@@ -9,10 +9,11 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@expo/vector-icons": "^14.0.4",
-    "@react-native-async-storage/async-storage": "1.23.1",
-    "expo": "~52.0.0",
-    "expo-haptics": "~13.0.1",
+    "@expo/vector-icons": "^14.1.0",
+    "@react-native-async-storage/async-storage": "1.32.3",
+    "expo": "~54.0.8",
+    "expo-font": "~13.0.4",
+    "expo-haptics": "~14.0.1",
     "expo-status-bar": "~2.0.0",
     "react": "18.3.1",
     "react-native": "0.76.5",
