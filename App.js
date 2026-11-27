@@ -664,6 +664,34 @@ export default function App() {
               contentContainerStyle={styles.modalContent}
               showsVerticalScrollIndicator={true}
             >
+              {/* ENTWICKLERINFORMATIONEN GANZ OBEN PLATZIERT */}
+              <Text style={[styles.sectionHeader, { color: theme.primary, marginTop: 4 }]}>
+                ENTWICKLERINFORMATIONEN
+              </Text>
+              <View style={[styles.infoBox, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
+                <View style={styles.devRow}>
+                  <Ionicons name="person-circle-outline" size={20} color={theme.primary} />
+                  <Text style={[styles.devText, { color: theme.text }]}>
+                    Entwickler: Özgür Cetin
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.devRow}
+                  onPress={() => Linking.openURL('mailto:ozgur.cetin@web.de')}
+                >
+                  <Ionicons name="mail-outline" size={20} color={theme.primary} />
+                  <Text style={[styles.devText, { color: theme.primary, textDecorationLine: 'underline' }]}>
+                    ozgur.cetin@web.de
+                  </Text>
+                </TouchableOpacity>
+                <View style={styles.devRow}>
+                  <Ionicons name="information-circle-outline" size={20} color={theme.textSecondary} />
+                  <Text style={[styles.devText, { color: theme.textSecondary }]}>
+                    Version 1.1.2 • Expo SDK 52
+                  </Text>
+                </View>
+              </View>
+
               <Text style={[styles.sectionHeader, { color: theme.primary }]}>
                 DARSTELLUNG
               </Text>
@@ -728,33 +756,6 @@ export default function App() {
                 <Text style={[styles.guideText, { color: theme.textSecondary }]}>
                   Über das Teilen-Symbol oben rechts sendest du deine offene Liste direkt per WhatsApp, SMS oder E-Mail. Alle Einträge, der Verlauf und dein Design werden dauerhaft lokal gespeichert.
                 </Text>
-              </View>
-
-              <Text style={[styles.sectionHeader, { color: theme.primary }]}>
-                ENTWICKLERINFORMATIONEN
-              </Text>
-              <View style={[styles.infoBox, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
-                <View style={styles.devRow}>
-                  <Ionicons name="person-circle-outline" size={20} color={theme.primary} />
-                  <Text style={[styles.devText, { color: theme.text }]}>
-                    Entwickler: Özgür Cetin
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.devRow}
-                  onPress={() => Linking.openURL('mailto:ozgur.cetin@web.de')}
-                >
-                  <Ionicons name="mail-outline" size={20} color={theme.primary} />
-                  <Text style={[styles.devText, { color: theme.primary, textDecorationLine: 'underline' }]}>
-                    ozgur.cetin@web.de
-                  </Text>
-                </TouchableOpacity>
-                <View style={styles.devRow}>
-                  <Ionicons name="information-circle-outline" size={20} color={theme.textSecondary} />
-                  <Text style={[styles.devText, { color: theme.textSecondary }]}>
-                    Version 1.1.2 • Expo SDK 52
-                  </Text>
-                </View>
               </View>
             </ScrollView>
           </View>
@@ -1016,7 +1017,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     padding: 18,
-    paddingBottom: 120,
+    paddingBottom: 40,
   },
   sectionHeader: {
     fontSize: 12,
