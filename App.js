@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import {
   StyleSheet,
@@ -660,7 +661,10 @@ export default function App() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.modalContent}>
+            <ScrollView 
+              contentContainerStyle={styles.modalContent}
+              showsVerticalScrollIndicator={true}
+            >
               <Text style={[styles.sectionHeader, { color: theme.primary }]}>
                 DARSTELLUNG
               </Text>
@@ -730,7 +734,7 @@ export default function App() {
               <Text style={[styles.sectionHeader, { color: theme.primary }]}>
                 ENTWICKLERINFORMATIONEN
               </Text>
-              <View style={[styles.infoBox, { backgroundColor: theme.inputBg, borderColor: theme.border, marginBottom: 40 }]}>
+              <View style={[styles.infoBox, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
                 <View style={styles.devRow}>
                   <Ionicons name="person-circle-outline" size={20} color={theme.primary} />
                   <Text style={[styles.devText, { color: theme.text }]}>
@@ -998,7 +1002,8 @@ const styles = StyleSheet.create({
   modalContainer: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '88%',
+    height: '75%',
+    marginTop: 'auto',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1013,7 +1018,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     padding: 18,
-    paddingBottom: 60,
+    paddingBottom: 80,
   },
   sectionHeader: {
     fontSize: 12,
