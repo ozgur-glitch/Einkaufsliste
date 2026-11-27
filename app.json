@@ -29,6 +29,16 @@
     "web": {
       "favicon": "./favicon.png"
     },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.25"
+          }
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "67b1c457-3576-4124-9a5d-da505043565f"
