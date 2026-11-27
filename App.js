@@ -19,7 +19,6 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 
 const STORAGE_ITEMS_KEY = '@einkaufsliste_items_v10';
 const STORAGE_HISTORY_KEY = '@einkaufsliste_history_v4';
@@ -70,14 +69,6 @@ export default function App() {
   const noteInputRef = useRef(null);
 
   const theme = isDarkMode ? DARK_THEME : LIGHT_THEME;
-
-  const triggerHaptic = () => {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch (e) {
-      // Fallback für Plattformen ohne Haptics
-    }
-  };
 
   React.useEffect(() => {
     const loadAppData = async () => {
@@ -133,7 +124,6 @@ export default function App() {
 
   const toggleTheme = async (value) => {
     setIsDarkMode(value);
-    triggerHaptic();
     try {
       await AsyncStorage.setItem(STORAGE_THEME_KEY, JSON.stringify(value));
     } catch (error) {
@@ -145,7 +135,6 @@ export default function App() {
     const text = (nameToAdd || inputText).trim();
     if (!text) return;
 
-    triggerHaptic();
     const trimmedNote = noteText.trim();
 
     const existingIndex = items.findIndex(
@@ -192,7 +181,6 @@ export default function App() {
   };
 
   const toggleComplete = (id) => {
-    triggerHaptic();
     setItems(
       items.map((item) =>
         item.id === id ? { ...item, completed: !item.completed } : item
@@ -201,7 +189,6 @@ export default function App() {
   };
 
   const updateQuantity = (id, delta) => {
-    triggerHaptic();
     setItems(
       items.map((item) => {
         if (item.id === id) {
@@ -223,7 +210,6 @@ export default function App() {
       return;
     }
 
-    triggerHaptic();
     const asNum = Number(trimmed);
     const finalQty = !isNaN(asNum) && trimmed !== '' ? asNum : trimmed;
 
@@ -241,7 +227,6 @@ export default function App() {
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= items.length) return;
 
-    triggerHaptic();
     const updated = [...items];
     const movedItem = updated.splice(index, 1)[0];
     updated.splice(newIndex, 0, movedItem);
@@ -258,7 +243,6 @@ export default function App() {
           text: 'Löschen',
           style: 'destructive',
           onPress: () => {
-            triggerHaptic();
             setItems(items.filter((item) => item.id !== id));
           },
         },
@@ -279,7 +263,6 @@ export default function App() {
           text: 'Löschen',
           style: 'destructive',
           onPress: () => {
-            triggerHaptic();
             setItems(items.filter((item) => !item.completed));
           },
         },
@@ -298,7 +281,6 @@ export default function App() {
           text: 'Alles löschen',
           style: 'destructive',
           onPress: () => {
-            triggerHaptic();
             setItems([]);
             setSettingsVisible(false);
           },
@@ -314,7 +296,6 @@ export default function App() {
       return;
     }
 
-    triggerHaptic();
     let textToShare = '🛒 Meine Einkaufsliste:\n\n';
     openItems.forEach(i => {
       textToShare += `• ${i.name} (${i.quantity})${i.note ? ` - ${i.note}` : ''}\n`;
@@ -739,10 +720,10 @@ export default function App() {
                 </Text>
 
                 <Text style={[styles.guideTitle, { color: theme.text, marginTop: 10 }]}>
-                  3. Haptisches Feedback & Steuerung
+                  3. Steuerung
                 </Text>
                 <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Die App vibriert leicht bei Interaktionen. Nutze die Pfeiltasten (▲/▼) für deine Supermarkt-Route, die Checkbox zum Abhaken und tippe direkt auf Mengen, um diese anzupassen.
+                  Nutze die Pfeiltasten (▲/▼) für deine Supermarkt-Route, die Checkbox zum Abhaken und tippe direkt auf Mengen, um diese anzupassen.
                 </Text>
               </View>
 
@@ -768,7 +749,7 @@ export default function App() {
                 <View style={styles.devRow}>
                   <Ionicons name="information-circle-outline" size={20} color={theme.textSecondary} />
                   <Text style={[styles.devText, { color: theme.textSecondary }]}>
-                    Version 1.1.3 • Expo SDK 54
+                    Version 1.1.2 • Expo SDK 52
                   </Text>
                 </View>
               </View>
