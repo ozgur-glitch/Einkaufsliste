@@ -59,7 +59,11 @@ export default function App() {
   const [noteText, setNoteText] = useState('');
   const [filter, setFilter] = useState('offen');
   const [isDarkMode, setIsDarkMode] = useState(false);
+  
+  // Einstellungs-Modal & aktiver Tab ('settings' oder 'guide')
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('settings');
+  
   const [isLoaded, setIsLoaded] = useState(false);
 
   const [qtyModalVisible, setQtyModalVisible] = useState(false);
@@ -459,7 +463,10 @@ export default function App() {
           )}
 
           <TouchableOpacity
-            onPress={() => setSettingsVisible(true)}
+            onPress={() => {
+              setSettingsTab('settings');
+              setSettingsVisible(true);
+            }}
             style={[styles.iconButton, { backgroundColor: theme.card, borderColor: theme.border }]}
           >
             <Ionicons name="settings-outline" size={22} color={theme.text} />
@@ -604,6 +611,7 @@ export default function App() {
         />
       </KeyboardAvoidingView>
 
+      {/* Mengen-Modal */}
       <Modal
         visible={qtyModalVisible}
         animationType="fade"
@@ -643,123 +651,201 @@ export default function App() {
         </View>
       </Modal>
 
+      {/* NEU: Vollbild-Einstellungen & Benutzerhandbuch mit eigenen Tabs */}
       <Modal
         visible={settingsVisible}
         animationType="slide"
-        transparent={true}
+        transparent={false}
         onRequestClose={() => setSettingsVisible(false)}
       >
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.modalContainer, { backgroundColor: theme.card }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>
-                ⚙️ Einstellungen & Info
-              </Text>
-              <TouchableOpacity onPress={() => setSettingsVisible(false)}>
-                <Ionicons name="close" size={26} color={theme.text} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView 
-              contentContainerStyle={styles.modalContent}
-              showsVerticalScrollIndicator={true}
+        <SafeAreaView style={[styles.fullModalContainer, { backgroundColor: theme.bg }]}>
+          {/* Header */}
+          <View style={[styles.fullModalHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              Einstellungen & Hilfe
+            </Text>
+            <TouchableOpacity
+              onPress={() => setSettingsVisible(false)}
+              style={[styles.closeCircleBtn, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
             >
-              {/* ENTWICKLERINFORMATIONEN GANZ OBEN PLATZIERT */}
-              <Text style={[styles.sectionHeader, { color: theme.primary, marginTop: 4 }]}>
-                ENTWICKLERINFORMATIONEN
+              <Ionicons name="close" size={22} color={theme.text} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Tab-Auswahl (Einstellungen vs. Benutzerhandbuch) */}
+          <View style={[styles.tabBarContainer, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+            <TouchableOpacity
+              onPress={() => setSettingsTab('settings')}
+              style={[
+                styles.tabButton,
+                {
+                  backgroundColor: settingsTab === 'settings' ? theme.primary : theme.inputBg,
+                  borderColor: settingsTab === 'settings' ? theme.primary : theme.border,
+                },
+              ]}
+            >
+              <Ionicons
+                name="options-outline"
+                size={18}
+                color={settingsTab === 'settings' ? '#FFFFFF' : theme.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.tabButtonText,
+                  { color: settingsTab === 'settings' ? '#FFFFFF' : theme.textSecondary },
+                ]}
+              >
+                Einstellungen
               </Text>
-              <View style={[styles.infoBox, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
-                <View style={styles.devRow}>
-                  <Ionicons name="person-circle-outline" size={20} color={theme.primary} />
-                  <Text style={[styles.devText, { color: theme.text }]}>
-                    Entwickler: Özgür Cetin
-                  </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setSettingsTab('guide')}
+              style={[
+                styles.tabButton,
+                {
+                  backgroundColor: settingsTab === 'guide' ? theme.primary : theme.inputBg,
+                  borderColor: settingsTab === 'guide' ? theme.primary : theme.border,
+                },
+              ]}
+            >
+              <Ionicons
+                name="book-outline"
+                size={18}
+                color={settingsTab === 'guide' ? '#FFFFFF' : theme.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.tabButtonText,
+                  { color: settingsTab === 'guide' ? '#FFFFFF' : theme.textSecondary },
+                ]}
+              >
+                Benutzerhandbuch
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Tab-Inhalt */}
+          <ScrollView
+            contentContainerStyle={styles.fullModalContent}
+            showsVerticalScrollIndicator={true}
+          >
+            {settingsTab === 'settings' ? (
+              <>
+                <Text style={[styles.sectionHeader, { color: theme.primary, marginTop: 4 }]}>
+                  DARSTELLUNG
+                </Text>
+                <View style={[styles.settingRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <View style={styles.settingLabelGroup}>
+                    <Ionicons
+                      name={isDarkMode ? 'moon' : 'sunny'}
+                      size={22}
+                      color={theme.primary}
+                    />
+                    <View style={{ marginLeft: 12 }}>
+                      <Text style={[styles.settingTitle, { color: theme.text }]}>
+                        Dunkelmodus (Dark Mode)
+                      </Text>
+                      <Text style={[styles.settingDesc, { color: theme.textSecondary }]}>
+                        {isDarkMode ? 'Aktiviert' : 'Deaktiviert'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={isDarkMode}
+                    onValueChange={toggleTheme}
+                    trackColor={{ false: '#CBD5E1', true: theme.primary }}
+                    thumbColor="#FFFFFF"
+                  />
                 </View>
+
+                <Text style={[styles.sectionHeader, { color: theme.primary }]}>
+                  DATENVERWALTUNG
+                </Text>
                 <TouchableOpacity
-                  style={styles.devRow}
-                  onPress={() => Linking.openURL('mailto:ozgur.cetin@web.de')}
+                  style={[styles.dangerButton, { backgroundColor: theme.card, borderColor: theme.danger }]}
+                  onPress={clearAllItems}
                 >
-                  <Ionicons name="mail-outline" size={20} color={theme.primary} />
-                  <Text style={[styles.devText, { color: theme.primary, textDecorationLine: 'underline' }]}>
-                    ozgur.cetin@web.de
+                  <Ionicons name="trash-outline" size={20} color={theme.danger} />
+                  <Text style={[styles.dangerButtonText, { color: theme.danger }]}>
+                    Komplette Einkaufsliste löschen
                   </Text>
                 </TouchableOpacity>
-                <View style={styles.devRow}>
-                  <Ionicons name="information-circle-outline" size={20} color={theme.textSecondary} />
-                  <Text style={[styles.devText, { color: theme.textSecondary }]}>
-                    Version 1.1.2 • Expo SDK 52
-                  </Text>
-                </View>
-              </View>
 
-              <Text style={[styles.sectionHeader, { color: theme.primary }]}>
-                DARSTELLUNG
-              </Text>
-              <View style={[styles.settingRow, { borderColor: theme.border }]}>
-                <View style={styles.settingLabelGroup}>
-                  <Ionicons
-                    name={isDarkMode ? 'moon' : 'sunny'}
-                    size={22}
-                    color={theme.primary}
-                  />
-                  <View style={{ marginLeft: 12 }}>
-                    <Text style={[styles.settingTitle, { color: theme.text }]}>
-                      Dunkelmodus (Dark Mode)
+                <Text style={[styles.sectionHeader, { color: theme.primary }]}>
+                  ENTWICKLERINFORMATIONEN
+                </Text>
+                <View style={[styles.infoBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <View style={styles.devRow}>
+                    <Ionicons name="person-circle-outline" size={20} color={theme.primary} />
+                    <Text style={[styles.devText, { color: theme.text }]}>
+                      Entwickler: Özgür Cetin
                     </Text>
-                    <Text style={[styles.settingDesc, { color: theme.textSecondary }]}>
-                      {isDarkMode ? 'Aktiviert' : 'Deaktiviert'}
+                  </View>
+                  <TouchableOpacity
+                    style={styles.devRow}
+                    onPress={() => Linking.openURL('mailto:ozgur.cetin@web.de')}
+                  >
+                    <Ionicons name="mail-outline" size={20} color={theme.primary} />
+                    <Text style={[styles.devText, { color: theme.primary, textDecorationLine: 'underline' }]}>
+                      ozgur.cetin@web.de
+                    </Text>
+                  </TouchableOpacity>
+                  <View style={styles.devRow}>
+                    <Ionicons name="information-circle-outline" size={20} color={theme.textSecondary} />
+                    <Text style={[styles.devText, { color: theme.textSecondary }]}>
+                      Version 1.1.2 • Expo SDK 52
                     </Text>
                   </View>
                 </View>
-                <Switch
-                  value={isDarkMode}
-                  onValueChange={toggleTheme}
-                  trackColor={{ false: '#CBD5E1', true: theme.primary }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
+              </>
+            ) : (
+              <>
+                <View style={[styles.guideCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <View style={styles.guideHeaderRow}>
+                    <View style={[styles.guideBadge, { backgroundColor: theme.primaryLight }]}>
+                      <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
+                    </View>
+                    <Text style={[styles.guideTitle, { color: theme.text }]}>
+                      1. Intelligente Eingabe & Verlauf
+                    </Text>
+                  </View>
+                  <Text style={[styles.guideText, { color: theme.textSecondary }]}>
+                    Tippe einen Artikel ein und drücke Enter (springt direkt zum Notizfeld) oder wähle einen Suchvorschlag aus deinem Verlauf. Mit Enter im Notizfeld oder Klick auf „+“ wird der Artikel gespeichert. Bereits offene Artikel werden automatisch hochgezählt.
+                  </Text>
+                </View>
 
-              <Text style={[styles.sectionHeader, { color: theme.primary }]}>
-                DATENVERWALTUNG
-              </Text>
-              <TouchableOpacity
-                style={[styles.dangerButton, { borderColor: theme.danger }]}
-                onPress={clearAllItems}
-              >
-                <Ionicons name="trash-outline" size={20} color={theme.danger} />
-                <Text style={[styles.dangerButtonText, { color: theme.danger }]}>
-                  Komplette Einkaufsliste löschen
-                </Text>
-              </TouchableOpacity>
+                <View style={[styles.guideCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <View style={styles.guideHeaderRow}>
+                    <View style={[styles.guideBadge, { backgroundColor: theme.primaryLight }]}>
+                      <Ionicons name="swap-vertical-outline" size={20} color={theme.primary} />
+                    </View>
+                    <Text style={[styles.guideTitle, { color: theme.text }]}>
+                      2. Mengen, Sortierung & Abhaken
+                    </Text>
+                  </View>
+                  <Text style={[styles.guideText, { color: theme.textSecondary }]}>
+                    Nutze „+“ / „–“ oder tippe direkt auf die Zahl, um eigene Mengen (z. B. 500g) einzugeben. Mit den Pfeilen (▲/▼) links sortierst du deine persönliche Supermarkt-Route. Ein Klick auf das Häkchen-Symbol oben rechts entfernt alle erledigten Artikel auf einmal.
+                  </Text>
+                </View>
 
-              <Text style={[styles.sectionHeader, { color: theme.primary }]}>
-                BENUTZERHANDBUCH
-              </Text>
-              <View style={[styles.infoBox, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
-                <Text style={[styles.guideTitle, { color: theme.text }]}>
-                  1. Intelligente Eingabe & Verlauf
-                </Text>
-                <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Tippe einen Artikel ein und drücke Enter (springt zum Notizfeld) oder klicke auf einen Suchvorschlag. Mit Enter im Notizfeld oder Klick auf „+“ wird der Artikel gespeichert. Bereits offene Artikel werden automatisch hochgezählt.
-                </Text>
-
-                <Text style={[styles.guideTitle, { color: theme.text, marginTop: 10 }]}>
-                  2. Mengen, Sortierung & Abhaken
-                </Text>
-                <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Nutze „+“ / „–“ oder tippe direkt auf die Zahl, um eigene Mengen (z. B. 500g) einzugeben. Mit den Pfeilen (▲/▼) sortierst du deine Supermarkt-Route. Ein Klick auf das Häkchen-Symbol oben rechts entfernt alle erledigten Artikel.
-                </Text>
-
-                <Text style={[styles.guideTitle, { color: theme.text, marginTop: 10 }]}>
-                  3. Teilen & Automatisches Speichern
-                </Text>
-                <Text style={[styles.guideText, { color: theme.textSecondary }]}>
-                  Über das Teilen-Symbol oben rechts sendest du deine offene Liste direkt per WhatsApp, SMS oder E-Mail. Alle Einträge, der Verlauf und dein Design werden dauerhaft lokal gespeichert.
-                </Text>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
+                <View style={[styles.guideCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <View style={styles.guideHeaderRow}>
+                    <View style={[styles.guideBadge, { backgroundColor: theme.primaryLight }]}>
+                      <Ionicons name="share-social-outline" size={20} color={theme.primary} />
+                    </View>
+                    <Text style={[styles.guideTitle, { color: theme.text }]}>
+                      3. Teilen & Automatisches Speichern
+                    </Text>
+                  </View>
+                  <Text style={[styles.guideText, { color: theme.textSecondary }]}>
+                    Über das Teilen-Symbol oben rechts sendest du deine offene Einkaufsliste direkt per WhatsApp, SMS oder E-Mail. Alle Einträge, der Verlauf und dein Design werden dauerhaft lokal auf deinem Gerät gespeichert.
+                  </Text>
+                </View>
+              </>
+            )}
+          </ScrollView>
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -999,40 +1085,70 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalContainer: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '85%',
+  // Neue Styles für Vollbild-Einstellungen & Tabs
+  fullModalContainer: {
+    flex: 1,
+    paddingTop: Platform.OS === 'android' ? 16 : 0,
   },
-  modalHeader: {
+  fullModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
     borderBottomWidth: 1,
+  },
+  closeCircleBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tabBarContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+    borderBottomWidth: 1,
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  tabButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  fullModalContent: {
+    padding: 16,
+    paddingBottom: 60, // Extra Abstand unten für Android-Navigationsleiste
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '700',
-  },
-  modalContent: {
-    padding: 18,
-    paddingBottom: 40,
+    fontWeight: '800',
   },
   sectionHeader: {
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1,
-    marginTop: 14,
+    marginTop: 18,
     marginBottom: 8,
   },
   settingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
   },
   settingLabelGroup: {
@@ -1051,8 +1167,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 13,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
     gap: 8,
   },
@@ -1062,23 +1178,42 @@ const styles = StyleSheet.create({
   },
   infoBox: {
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
   },
+  guideCard: {
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  guideHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  guideBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   guideTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
+    flex: 1,
   },
   guideText: {
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: 2,
+    fontSize: 14,
+    lineHeight: 21,
   },
   devRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginVertical: 4,
+    marginVertical: 5,
   },
   devText: {
     fontSize: 14,
