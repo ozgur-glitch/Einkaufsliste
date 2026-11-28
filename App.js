@@ -15,7 +15,8 @@ import {
   KeyboardAvoidingView,
   Linking,
   StatusBar,
-  Share
+  Share,
+  Animated
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,6 +36,7 @@ const LIGHT_THEME = {
   border: '#E5E7EB',
   danger: '#EF4444',
   inputBg: '#F9FAFB',
+  pillTrack: '#E2E8F0',
   modalOverlay: 'rgba(0, 0, 0, 0.5)',
 };
 
@@ -49,6 +51,7 @@ const DARK_THEME = {
   border: '#334155',
   danger: '#F87171',
   inputBg: '#0F172A',
+  pillTrack: '#0F172A',
   modalOverlay: 'rgba(0, 0, 0, 0.75)',
 };
 
@@ -59,11 +62,12 @@ export default function App() {
   const [noteText, setNoteText] = useState('');
   const [filter, setFilter] = useState('offen');
   const [isDarkMode, setIsDarkMode] = useState(false);
-  
-  // Einstellungs-Modal & aktiver Tab ('settings' oder 'guide')
+
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [settingsTab, setSettingsTab] = useState('settings');
-  
+  const [tabContainerWidth, setTabContainerWidth] = useState(0);
+  const tabAnim = useRef(new Animated.Value(0)).current;
+
   const [isLoaded, setIsLoaded] = useState(false);
 
   const [qtyModalVisible, setQtyModalVisible] = useState(false);
@@ -73,6 +77,32 @@ export default function App() {
   const noteInputRef = useRef(null);
 
   const theme = isDarkMode ? DARK_THEME : LIGHT_THEME;
+
+  // 0-49,99% Rot | 50,00-99,99% Gelb | 100% Grün
+  const getProgressColor = (percent) => {
+    if (percent >= 100) {
+      return isDarkMode ? '#34D399' : '#10B981';
+    }
+    if (percent >= 50) {
+      return isDarkMode ? '#FBBF24' : '#D97706';
+    }
+    return isDarkMode ? '#F87171' : '#EF4444';
+  };
+
+  const formatPercentLabel = (percent) => {
+    if (percent >= 100) return '100%';
+    return `${percent.toFixed(2).replace('.', ',')}%`;
+  };
+
+  const switchSettingsTab = (tabName) => {
+    setSettingsTab(tabName);
+    Animated.spring(tabAnim, {
+      toValue: tabName === 'settings' ? 0 : 1,
+      useNativeDriver: true,
+      bounciness: 6,
+      speed: 14,
+    }).start();
+  };
 
   React.useEffect(() => {
     const loadAppData = async () => {
@@ -148,7 +178,7 @@ export default function App() {
     if (existingIndex !== -1) {
       const updated = [...items];
       const currentItem = updated[existingIndex];
-      
+
       let newQty = 1;
       if (typeof currentItem.quantity === 'number') {
         newQty = currentItem.quantity + 1;
@@ -329,7 +359,17 @@ export default function App() {
   const totalCount = items.length;
   const completedCount = items.filter((i) => i.completed).length;
   const openCount = totalCount - completedCount;
-  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  const rawPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+  const progressPercent = rawPercent >= 99.995 ? 100 : Number(rawPercent.toFixed(2));
+  const progressColor = getProgressColor(progressPercent);
+  const progressLabel = formatPercentLabel(progressPercent);
+
+  const pillWidth = tabContainerWidth > 0 ? (tabContainerWidth - 8) / 2 : 0;
+  const translateX = tabAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, pillWidth],
+  });
 
   const renderItem = ({ item, index }) => {
     return (
@@ -437,39 +477,68 @@ export default function App() {
         backgroundColor={theme.bg}
       />
 
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <View>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Einkaufsliste</Text>
-          <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-            {completedCount} von {totalCount} erledigt ({progressPercent}%)
+      {/* HEADER MIT EXAKTER BEREICHSLOGIK: 0-49,99% ROT | 50,00-99,99% GELB | 100% GRÜN */}
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+        <View style={styles.headerTitleGroup}>
+          <Text
+            numberOfLines={1}
+            style={[styles.headerTitle, { color: theme.text }]}
+          >
+            Einkaufsliste
           </Text>
+
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: theme.inputBg, borderColor: theme.border },
+            ]}
+          >
+            <View style={[styles.statusDot, { backgroundColor: progressColor }]} />
+            <Text
+              numberOfLines={1}
+              style={[styles.headerSubtitle, { color: theme.textSecondary }]}
+            >
+              {completedCount}/{totalCount} erledigt
+            </Text>
+            <Text style={[styles.dotSeparator, { color: theme.textSecondary }]}>•</Text>
+            <Text
+              numberOfLines={1}
+              style={[styles.percentText, { color: progressColor }]}
+            >
+              {progressLabel}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.headerButtons}>
           <TouchableOpacity
             onPress={shareList}
-            style={[styles.iconButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+            activeOpacity={0.75}
+            style={[styles.iconButton, { backgroundColor: theme.primaryLight, borderColor: 'transparent' }]}
           >
-            <Ionicons name="share-social-outline" size={20} color={theme.primary} />
+            <Ionicons name="share-social" size={18} color={theme.primary} />
           </TouchableOpacity>
 
           {completedCount > 0 && (
             <TouchableOpacity
               onPress={clearCompleted}
-              style={[styles.iconButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+              activeOpacity={0.75}
+              style={[styles.iconButton, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
             >
-              <Ionicons name="checkmark-done-outline" size={22} color={theme.primary} />
+              <Ionicons name="checkmark-done" size={19} color={theme.primary} />
             </TouchableOpacity>
           )}
 
           <TouchableOpacity
             onPress={() => {
               setSettingsTab('settings');
+              tabAnim.setValue(0);
               setSettingsVisible(true);
             }}
-            style={[styles.iconButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+            activeOpacity={0.75}
+            style={[styles.iconButton, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
           >
-            <Ionicons name="settings-outline" size={22} color={theme.text} />
+            <Ionicons name="settings-sharp" size={19} color={theme.text} />
           </TouchableOpacity>
         </View>
       </View>
@@ -478,7 +547,7 @@ export default function App() {
         <View
           style={[
             styles.progressBarFill,
-            { backgroundColor: theme.primary, width: `${progressPercent}%` },
+            { backgroundColor: progressColor, width: `${progressPercent}%` },
           ]}
         />
       </View>
@@ -651,7 +720,7 @@ export default function App() {
         </View>
       </Modal>
 
-      {/* NEU: Vollbild-Einstellungen & Benutzerhandbuch mit eigenen Tabs */}
+      {/* Einstellungs-Modal mit Floating Pill Tabs */}
       <Modal
         visible={settingsVisible}
         animationType="slide"
@@ -659,73 +728,96 @@ export default function App() {
         onRequestClose={() => setSettingsVisible(false)}
       >
         <SafeAreaView style={[styles.fullModalContainer, { backgroundColor: theme.bg }]}>
-          {/* Header */}
-          <View style={[styles.fullModalHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>
-              Einstellungen & Hilfe
-            </Text>
+          <View style={[styles.modernModalHeader, { backgroundColor: theme.bg }]}>
+            <View>
+              <Text style={[styles.modernModalTitle, { color: theme.text }]}>
+                Einstellungen & Hilfe
+              </Text>
+              <Text style={[styles.modernModalSubtitle, { color: theme.textSecondary }]}>
+                App anpassen oder Anleitung nachlesen
+              </Text>
+            </View>
             <TouchableOpacity
               onPress={() => setSettingsVisible(false)}
-              style={[styles.closeCircleBtn, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
+              style={[styles.closeCircleBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+              activeOpacity={0.7}
             >
               <Ionicons name="close" size={22} color={theme.text} />
             </TouchableOpacity>
           </View>
 
-          {/* Tab-Auswahl (Einstellungen vs. Benutzerhandbuch) */}
-          <View style={[styles.tabBarContainer, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-            <TouchableOpacity
-              onPress={() => setSettingsTab('settings')}
+          <View style={styles.pillWrapper}>
+            <View
+              onLayout={(e) => setTabContainerWidth(e.nativeEvent.layout.width)}
               style={[
-                styles.tabButton,
+                styles.pillTrack,
                 {
-                  backgroundColor: settingsTab === 'settings' ? theme.primary : theme.inputBg,
-                  borderColor: settingsTab === 'settings' ? theme.primary : theme.border,
+                  backgroundColor: theme.pillTrack,
+                  borderColor: theme.border,
                 },
               ]}
             >
-              <Ionicons
-                name="options-outline"
-                size={18}
-                color={settingsTab === 'settings' ? '#FFFFFF' : theme.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.tabButtonText,
-                  { color: settingsTab === 'settings' ? '#FFFFFF' : theme.textSecondary },
-                ]}
-              >
-                Einstellungen
-              </Text>
-            </TouchableOpacity>
+              {pillWidth > 0 && (
+                <Animated.View
+                  style={[
+                    styles.animatedPillIndicator,
+                    {
+                      width: pillWidth,
+                      backgroundColor: theme.primary,
+                      transform: [{ translateX }],
+                    },
+                  ]}
+                />
+              )}
 
-            <TouchableOpacity
-              onPress={() => setSettingsTab('guide')}
-              style={[
-                styles.tabButton,
-                {
-                  backgroundColor: settingsTab === 'guide' ? theme.primary : theme.inputBg,
-                  borderColor: settingsTab === 'guide' ? theme.primary : theme.border,
-                },
-              ]}
-            >
-              <Ionicons
-                name="book-outline"
-                size={18}
-                color={settingsTab === 'guide' ? '#FFFFFF' : theme.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.tabButtonText,
-                  { color: settingsTab === 'guide' ? '#FFFFFF' : theme.textSecondary },
-                ]}
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => switchSettingsTab('settings')}
+                style={styles.pillTabButton}
               >
-                Benutzerhandbuch
-              </Text>
-            </TouchableOpacity>
+                <Ionicons
+                  name={settingsTab === 'settings' ? 'settings' : 'settings-outline'}
+                  size={18}
+                  color={settingsTab === 'settings' ? '#FFFFFF' : theme.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.pillTabText,
+                    {
+                      color: settingsTab === 'settings' ? '#FFFFFF' : theme.textSecondary,
+                      fontWeight: settingsTab === 'settings' ? '700' : '600',
+                    },
+                  ]}
+                >
+                  Einstellungen
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => switchSettingsTab('guide')}
+                style={styles.pillTabButton}
+              >
+                <Ionicons
+                  name={settingsTab === 'guide' ? 'book' : 'book-outline'}
+                  size={18}
+                  color={settingsTab === 'guide' ? '#FFFFFF' : theme.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.pillTabText,
+                    {
+                      color: settingsTab === 'guide' ? '#FFFFFF' : theme.textSecondary,
+                      fontWeight: settingsTab === 'guide' ? '700' : '600',
+                    },
+                  ]}
+                >
+                  Handbuch
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Tab-Inhalt */}
           <ScrollView
             contentContainerStyle={styles.fullModalContent}
             showsVerticalScrollIndicator={true}
@@ -860,27 +952,61 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
   },
+  headerTitleGroup: {
+    flex: 1,
+    flexShrink: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    letterSpacing: -0.4,
+    lineHeight: 26,
+    textAlign: 'left',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 5,
+    marginTop: 5,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
   headerSubtitle: {
-    fontSize: 13,
-    marginTop: 2,
-    fontWeight: '500',
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+  dotSeparator: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  percentText: {
+    fontSize: 12,
+    fontWeight: '800',
   },
   headerButtons: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    flexShrink: 0,
+    gap: 6,
   },
   iconButton: {
-    width: 42,
-    height: 42,
+    width: 38,
+    height: 38,
     borderRadius: 12,
     borderWidth: 1,
     justifyContent: 'center',
@@ -1085,51 +1211,82 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // Neue Styles für Vollbild-Einstellungen & Tabs
   fullModalContainer: {
     flex: 1,
     paddingTop: Platform.OS === 'android' ? 16 : 0,
   },
-  fullModalHeader: {
+  modernModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  modernModalTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  modernModalSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+    fontWeight: '500',
   },
   closeCircleBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
   },
-  tabBarContainer: {
-    flexDirection: 'row',
+  pillWrapper: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    gap: 10,
-    borderBottomWidth: 1,
   },
-  tabButton: {
+  pillTrack: {
+    flexDirection: 'row',
+    height: 52,
+    borderRadius: 999,
+    borderWidth: 1,
+    padding: 4,
+    position: 'relative',
+    alignItems: 'center',
+  },
+  animatedPillIndicator: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    bottom: 4,
+    borderRadius: 999,
+    elevation: 3,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.28,
+    shadowRadius: 5,
+  },
+  pillTabButton: {
     flex: 1,
+    height: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
     gap: 8,
+    zIndex: 1,
   },
-  tabButtonText: {
+  pillTabText: {
     fontSize: 14,
-    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   fullModalContent: {
     padding: 16,
-    paddingBottom: 60, // Extra Abstand unten für Android-Navigationsleiste
+    paddingBottom: 60,
   },
   modalTitle: {
     fontSize: 20,
@@ -1148,7 +1305,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
   },
   settingLabelGroup: {
@@ -1168,7 +1325,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     gap: 8,
   },
@@ -1178,12 +1335,12 @@ const styles = StyleSheet.create({
   },
   infoBox: {
     padding: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
   },
   guideCard: {
     padding: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     marginBottom: 12,
   },
